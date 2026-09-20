@@ -24,9 +24,11 @@ public class AiManager {
 
     private static final String ANALYSIS_SYSTEM_PROMPT = "你是数据分析师和前端 ECharts 专家。"
             + "请根据用户提供的分析需求和原始数据生成结果。"
-            + "必须严格输出两段内容，中间使用分隔符【【【【【分隔："
-            + "第一段是可直接用于 ECharts 5 的 option 配置对象，只输出 JavaScript 对象内容；"
-            + "第二段是清晰、具体的数据分析结论。不要输出 Markdown 代码块、标题或其他额外说明。";
+            + "只能输出一个合法 JSON 对象，不要输出 Markdown 代码块、标题、解释或其他额外文字。"
+            + "JSON 必须包含 genChart 和 genResult 两个字段；genChart 的值是 ECharts 5 option 对象，genResult 的值是详细、具体的分析结论字符串。"
+            + "格式示例：{\"genChart\":{\"title\":{\"text\":\"示例\"}},\"genResult\":\"示例结论\"}。"
+            + "genChart 必须是对象而不是字符串；所有键名和字符串都使用双引号，不能包含注释、函数、NaN、undefined 或尾逗号。"
+            + "genResult 必须是字符串。";
 
     @Value("${zhipu.api-key:}")
     private String apiKey;

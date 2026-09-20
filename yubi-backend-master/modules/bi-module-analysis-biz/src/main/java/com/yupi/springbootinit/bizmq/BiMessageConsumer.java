@@ -5,6 +5,7 @@ import com.yupi.springbootinit.common.ErrorCode;
 import com.yupi.springbootinit.constant.CommonConstant;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.manager.AiManager;
+import com.yupi.springbootinit.manager.AiResponseParser;
 import com.yupi.springbootinit.model.entity.Chart;
 import com.yupi.springbootinit.service.ChartService;
 import lombok.SneakyThrows;
@@ -54,15 +55,21 @@ public class BiMessageConsumer {
             return;
         }
         // 调用 AI
-        String result = aiManager.doChat(CommonConstant.BI_MODEL_ID, buildUserInput(chart));
-        String[] splits = result.split("【【【【【");
-        if (splits.length < 3) {
+        AiResponseParser.ParsedResult parsedResult;
+        try {
+            String result = aiManager.doChat(CommonConstant.BI_MODEL_ID, buildUserInput(chart));
+            parsedResult = AiResponseParser.parse(result);
+        } catch (BusinessException e) {
             channel.basicNack(deliveryTag, false, false);
-            handleChartUpdateError(chart.getId(), "AI 生成错误");
+            handleChartUpdateError(chart.getId(), e.getMessage());
+            return;
+        } catch (IllegalArgumentException e) {
+            channel.basicNack(deliveryTag, false, false);
+            handleChartUpdateError(chart.getId(), "AI 返回格式无法解析，请稍后重试");
             return;
         }
-        String genChart = splits[1].trim();
-        String genResult = splits[2].trim();
+        String genChart = parsedResult.getGenChart();
+        String genResult = parsedResult.getGenResult();
         Chart updateChartResult = new Chart();
         updateChartResult.setId(chart.getId());
         updateChartResult.setGenChart(genChart);
@@ -107,7 +114,7 @@ public class BiMessageConsumer {
         Chart updateChartResult = new Chart();
         updateChartResult.setId(chartId);
         updateChartResult.setStatus("failed");
-        updateChartResult.setExecMessage("execMessage");
+        updateChartResult.setExecMessage(execMessage);
         boolean updateResult = chartService.updateById(updateChartResult);
         if (!updateResult) {
             log.error("更新图表失败状态失败" + chartId + "," + execMessage);

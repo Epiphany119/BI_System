@@ -3,7 +3,6 @@ package com.yupi.springbootinit.controller;
 import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.google.gson.Gson;
 import com.yupi.springbootinit.annotation.AuthCheck;
 import com.yupi.springbootinit.bizmq.BiMessageProducer;
 import com.yupi.springbootinit.common.BaseResponse;
@@ -15,6 +14,7 @@ import com.yupi.springbootinit.constant.UserConstant;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.exception.ThrowUtils;
 import com.yupi.springbootinit.manager.AiManager;
+import com.yupi.springbootinit.manager.AiResponseParser;
 import com.yupi.springbootinit.manager.RedisLimiterManager;
 import com.yupi.springbootinit.model.dto.chart.*;
 import com.yupi.springbootinit.model.entity.Chart;
@@ -297,12 +297,9 @@ public class ChartController {
         userInput.append(csvData).append("\n");
 
         String result = aiManager.doChat(biModelId, userInput.toString());
-        String[] splits = result.split("【【【【【");
-        if (splits.length < 3) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 生成错误");
-        }
-        String genChart = splits[1].trim();
-        String genResult = splits[2].trim();
+        AiResponseParser.ParsedResult parsedResult = parseAiResponse(result);
+        String genChart = parsedResult.getGenChart();
+        String genResult = parsedResult.getGenResult();
         // 插入到数据库
         Chart chart = new Chart();
         chart.setName(name);
@@ -410,24 +407,25 @@ public class ChartController {
                 handleChartUpdateError(chart.getId(), "更新图表执行中状态失败");
                 return;
             }
-            // 调用 AI
-            String result = aiManager.doChat(biModelId, userInput.toString());
-            String[] splits = result.split("【【【【【");
-            if (splits.length < 3) {
-                handleChartUpdateError(chart.getId(), "AI 生成错误");
-                return;
-            }
-            String genChart = splits[1].trim();
-            String genResult = splits[2].trim();
-            Chart updateChartResult = new Chart();
-            updateChartResult.setId(chart.getId());
-            updateChartResult.setGenChart(genChart);
-            updateChartResult.setGenResult(genResult);
-            // todo 建议定义状态为枚举值
-            updateChartResult.setStatus("succeed");
-            boolean updateResult = chartService.updateById(updateChartResult);
-            if (!updateResult) {
-                handleChartUpdateError(chart.getId(), "更新图表成功状态失败");
+            try {
+                // 调用 AI
+                String result = aiManager.doChat(biModelId, userInput.toString());
+                AiResponseParser.ParsedResult parsedResult = parseAiResponse(result);
+                Chart updateChartResult = new Chart();
+                updateChartResult.setId(chart.getId());
+                updateChartResult.setGenChart(parsedResult.getGenChart());
+                updateChartResult.setGenResult(parsedResult.getGenResult());
+                // todo 建议定义状态为枚举值
+                updateChartResult.setStatus("succeed");
+                boolean updateResult = chartService.updateById(updateChartResult);
+                if (!updateResult) {
+                    handleChartUpdateError(chart.getId(), "更新图表成功状态失败");
+                }
+            } catch (BusinessException e) {
+                handleChartUpdateError(chart.getId(), e.getMessage());
+            } catch (Exception e) {
+                log.error("异步生成图表失败，chartId={}", chart.getId(), e);
+                handleChartUpdateError(chart.getId(), "AI 生成失败，请稍后重试");
             }
         }, threadPoolExecutor);
 
@@ -520,12 +518,21 @@ public class ChartController {
         return ResultUtils.success(biResponse);
     }
 
+    private AiResponseParser.ParsedResult parseAiResponse(String result) {
+        try {
+            return AiResponseParser.parse(result);
+        } catch (IllegalArgumentException e) {
+            log.warn("智谱 AI 返回内容无法解析，响应长度={}", result == null ? 0 : result.length());
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 返回格式无法解析，请稍后重试");
+        }
+    }
+
 
     private void handleChartUpdateError(long chartId, String execMessage) {
         Chart updateChartResult = new Chart();
         updateChartResult.setId(chartId);
         updateChartResult.setStatus("failed");
-        updateChartResult.setExecMessage("execMessage");
+        updateChartResult.setExecMessage(execMessage);
         boolean updateResult = chartService.updateById(updateChartResult);
         if (!updateResult) {
             log.error("更新图表失败状态失败" + chartId + "," + execMessage);
