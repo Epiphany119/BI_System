@@ -247,13 +247,14 @@ public class ChartController {
         ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "目标为空");
         ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "名称过长");
         // 校验文件
+        ThrowUtils.throwIf(multipartFile == null || multipartFile.isEmpty(), ErrorCode.PARAMS_ERROR, "文件不能为空");
         long size = multipartFile.getSize();
         String originalFilename = multipartFile.getOriginalFilename();
         // 校验文件大小
-        final long ONE_MB = 1024 * 1024L;
-        ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件超过 1M");
+        final long MAX_FILE_SIZE = 5 * 1024 * 1024L;
+        ThrowUtils.throwIf(size > MAX_FILE_SIZE, ErrorCode.PARAMS_ERROR, "文件超过 5MB");
         // 校验文件后缀 aaa.png
-        String suffix = FileUtil.getSuffix(originalFilename);
+        String suffix = StringUtils.lowerCase(FileUtil.getSuffix(originalFilename));
         final List<String> validFileSuffixList = Arrays.asList("xlsx");
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
 
@@ -338,14 +339,15 @@ public class ChartController {
         ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "目标为空");
         ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "名称过长");
         // 校验文件
+        ThrowUtils.throwIf(multipartFile == null || multipartFile.isEmpty(), ErrorCode.PARAMS_ERROR, "文件不能为空");
         long size = multipartFile.getSize();
         String originalFilename = multipartFile.getOriginalFilename();
         // 校验文件大小
-        final long ONE_MB = 1024 * 1024L;
-        ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件超过 1M");
+        final long MAX_FILE_SIZE = 5 * 1024 * 1024L;
+        ThrowUtils.throwIf(size > MAX_FILE_SIZE, ErrorCode.PARAMS_ERROR, "文件超过 5MB");
         // 校验文件后缀 aaa.png
-        String suffix = FileUtil.getSuffix(originalFilename);
-        final List<String> validFileSuffixList = Arrays.asList("xlsx", "xls");
+        String suffix = StringUtils.lowerCase(FileUtil.getSuffix(originalFilename));
+        final List<String> validFileSuffixList = Arrays.asList("xlsx");
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
 
         User loginUser = userService.getLoginUser(request);
@@ -452,13 +454,14 @@ public class ChartController {
         ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "目标为空");
         ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "名称过长");
         // 校验文件
+        ThrowUtils.throwIf(multipartFile == null || multipartFile.isEmpty(), ErrorCode.PARAMS_ERROR, "文件不能为空");
         long size = multipartFile.getSize();
         String originalFilename = multipartFile.getOriginalFilename();
         // 校验文件大小
-        final long ONE_MB = 1024 * 1024L;
-        ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件超过 1M");
+        final long MAX_FILE_SIZE = 5 * 1024 * 1024L;
+        ThrowUtils.throwIf(size > MAX_FILE_SIZE, ErrorCode.PARAMS_ERROR, "文件超过 5MB");
         // 校验文件后缀 aaa.png
-        String suffix = FileUtil.getSuffix(originalFilename);
+        String suffix = StringUtils.lowerCase(FileUtil.getSuffix(originalFilename));
         final List<String> validFileSuffixList = Arrays.asList("xlsx", "xls");
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
 
