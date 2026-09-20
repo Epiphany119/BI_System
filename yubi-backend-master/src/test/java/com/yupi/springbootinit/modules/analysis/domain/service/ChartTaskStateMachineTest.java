@@ -1,5 +1,6 @@
-package com.yupi.springbootinit.charttask.domain;
+package com.yupi.springbootinit.modules.analysis.domain.service;
 
+import com.yupi.springbootinit.modules.analysis.domain.enums.ChartTaskStatus;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

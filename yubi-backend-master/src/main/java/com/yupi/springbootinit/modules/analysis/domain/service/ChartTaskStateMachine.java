@@ -1,4 +1,6 @@
-package com.yupi.springbootinit.charttask.domain;
+package com.yupi.springbootinit.modules.analysis.domain.service;
+
+import com.yupi.springbootinit.modules.analysis.domain.enums.ChartTaskStatus;
 
 import java.util.EnumSet;
 import java.util.Map;

@@ -1,4 +1,6 @@
-package com.yupi.springbootinit.charttask.domain;
+package com.yupi.springbootinit.modules.analysis.domain.service;
+
+import com.yupi.springbootinit.modules.analysis.domain.enums.ChartTaskMode;
 
 /** Server-side routing policy. The threshold is configurable for later load testing. */
 public final class ChartTaskRouter {
