@@ -1,0 +1,9 @@
+.idea/
+*.iml
+target/
+node_modules/
+dist/
+.DS_Store
+*.log
+application-local.yml
+/yubi-backend-master/src/main/resources/application-local.yml
