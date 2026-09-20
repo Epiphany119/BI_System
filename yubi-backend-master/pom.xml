@@ -13,6 +13,12 @@
     <artifactId>yubi-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>yubi-backend</name>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>modules</module>
+    </modules>
+
     <properties>
         <java.version>17</java.version>
         <maven.compiler.release>17</maven.compiler.release>
@@ -138,6 +144,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <version>1.18.42</version>
             <optional>true</optional>
         </dependency>
         <dependency>
@@ -152,6 +159,7 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <inherited>false</inherited>
                 <configuration>
                     <excludes>
                         <exclude>
