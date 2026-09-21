@@ -12,6 +12,38 @@
 | 创建日期 | 2026-09-20 |
 | 目标用户 | 普通业务用户、数据分析师 |
 
+## 0. 文档体系与 Maven 模块映射
+
+本文作为 V1.0 核心业务 PRD，描述跨模块的用户目标、业务流程、数据契约和整体验收。每个 Maven 模块另建一份“分模块 PRD”，在同一文档中包含需求分析、职责边界、技术设计、包结构和模块验收标准。
+
+文档与代码必须一一对应：
+
+```text
+总体 PRD / 总体技术设计
+        ↓ 拆分
+分模块 PRD（需求 + 技术设计 + 验收）
+        ↓ 对应
+Maven artifactId
+        ↓ 对应
+Java package + 模块测试
+```
+
+| Maven 模块 | 分模块 PRD | 当前状态 |
+|---|---|---|
+| `bi-common` | `PRD-V1.0-bi-common.md` | 待编写 |
+| `bi-infra` | `PRD-V1.0-bi-infra.md` | 待编写 |
+| `bi-ai-runtime` | `PRD-V1.0-bi-ai-runtime.md` | 初稿 |
+| `bi-module-user-biz` | `PRD-V1.0-bi-module-user-biz.md` | 待编写 |
+| `bi-module-auth-biz` | `PRD-V1.0-bi-module-auth-biz.md` | 待编写 |
+| `bi-module-analysis-biz` | `PRD-V1.0-bi-module-analysis-biz.md` | 待编写 |
+| `bi-module-chart-biz` | `PRD-V1.0-bi-module-chart-biz.md` | 待编写 |
+| `bi-module-file-biz` | `PRD-V1.0-bi-module-file-biz.md` | 待编写 |
+| `bi-module-dashboard-biz` | `PRD-V1.0-bi-module-dashboard-biz.md` | 待编写 |
+| `bi-module-report-biz` | `PRD-V1.0-bi-module-report-biz.md` | 待编写 |
+| `bi-web` | `PRD-V1.0-bi-web.md` | 待编写 |
+
+模块边界总表见 `模块边界-V1.0.md`。总体 PRD 决定“系统需要完成什么”，分模块 PRD 决定“由哪个模块完成、如何实现、如何验收”。若两者冲突，必须先更新总体决策，再同步更新受影响的分模块 PRD，禁止只改代码不改文档。
+
 ## 1. 背景与问题
 
 业务人员通常需要先整理 Excel/CSV 数据，再手动选择图表、观察趋势并撰写分析结论。这个过程依赖专业人员，耗时较长，且分析结果难以沉淀和复用。
@@ -412,3 +444,4 @@ V1.0 事件记录永久保存，不执行定期清理，以保证简历项目中
 |---|---|---|---|
 | 2026-09-20 | V1.0 | 初始版本，定义创建智能分析任务的业务、技术和验收要求 | 产品/研发 |
 | 2026-09-20 | V1.1 | 确定同步/异步对用户透明，2MB 自动路由；同步失败重连 3 次、单次 5 秒后转入异步 | 产品/研发 |
+| 2026-09-21 | V1.2-draft | 增加总体 PRD、分模块 PRD、Maven 模块、Java 包和测试的一一映射规范 | 产品/研发 |
