@@ -57,6 +57,72 @@ class AnalysisTaskApplicationServiceTest {
         verify(chartService, atLeastOnce()).updateById(argThat(chart -> AnalysisTaskApplicationService.FAILED.equals(chart.getStatus())));
     }
 
+    /** 测试失败任务只能由所属用户重试，并且重试成功后状态恢复为 SUCCEEDED。 */
+    @Test
+    void shouldRetryOwnedFailedTask() {
+        ChartService chartService = mock(ChartService.class);
+        when(chartService.updateById(any(Chart.class))).thenReturn(true);
+        AiChatClient aiClient = mock(AiChatClient.class);
+        AiChatResponse response = new AiChatResponse();
+        response.setContent("{\"genChart\":{},\"genResult\":\"重试成功\"}");
+        when(aiClient.chat(any())).thenReturn(response);
+        AnalysisTaskApplicationService service = service(chartService, aiClient);
+
+        Chart chart = failedChart(3L, 100L);
+        AnalysisTaskResult result = service.retryFailedTask(chart, 100L);
+
+        assertEquals("重试成功", result.getGenResult());
+        assertEquals(AnalysisTaskApplicationService.SUCCEEDED, chart.getStatus());
+    }
+
+    /** 测试 MQ 重复投递已经成功的任务时不会再次调用模型。 */
+    @Test
+    void shouldSkipSucceededTaskWhenMessageIsRedelivered() {
+        ChartService chartService = mock(ChartService.class);
+        AiChatClient aiClient = mock(AiChatClient.class);
+        AnalysisTaskApplicationService service = service(chartService, aiClient);
+        Chart chart = failedChart(4L, 100L);
+        chart.setStatus(AnalysisTaskApplicationService.SUCCEEDED);
+        chart.setGenResult("已完成");
+
+        AnalysisTaskResult result = service.executeExistingTask(chart);
+
+        assertEquals("已完成", result.getGenResult());
+        verifyNoInteractions(aiClient);
+    }
+
+    /** 测试异步入口只创建 WAITING 任务，并使用统一的数据转换限制。 */
+    @Test
+    void shouldCreateWaitingTaskForAsyncEntry() {
+        ChartService chartService = mock(ChartService.class);
+        when(chartService.save(any(Chart.class))).thenAnswer(invocation -> {
+            invocation.getArgument(0, Chart.class).setId(5L);
+            return true;
+        });
+        AnalysisTaskApplicationService service = service(chartService, mock(AiChatClient.class));
+
+        Chart chart = service.createWaitingTask(command());
+
+        assertEquals(5L, chart.getId());
+        assertEquals(AnalysisTaskApplicationService.WAITING, chart.getStatus());
+    }
+
+    private AnalysisTaskApplicationService service(ChartService chartService, AiChatClient aiClient) {
+        return new AnalysisTaskApplicationService(chartService, aiClient, new SpreadsheetDataConverter(),
+                new AnalysisPromptBuilder(), new AnalysisResultParser(new ObjectMapper()));
+    }
+
+    private Chart failedChart(Long id, Long userId) {
+        Chart chart = new Chart();
+        chart.setId(id);
+        chart.setUserId(userId);
+        chart.setStatus(AnalysisTaskApplicationService.FAILED);
+        chart.setGoal("分析地点分布");
+        chart.setChartType("柱状图");
+        chart.setChartData("地点,数量\n北京,10\n");
+        return chart;
+    }
+
     private AnalysisTaskCommand command() {
         MockMultipartFile file = new MockMultipartFile("file", "data.csv", "text/csv", "地点,数量\n北京,10\n".getBytes());
         return new AnalysisTaskCommand(file, "测试图表", "分析地点分布", "柱状图", 100L);

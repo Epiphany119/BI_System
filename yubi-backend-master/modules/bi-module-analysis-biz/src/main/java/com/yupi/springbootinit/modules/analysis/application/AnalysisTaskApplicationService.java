@@ -35,22 +35,88 @@ public class AnalysisTaskApplicationService {
     /** 执行同步分析：创建任务、调用模型、解析并保存成功结果。 */
     @Transactional
     public AnalysisTaskResult executeSynchronously(AnalysisTaskCommand command) {
-        validate(command);
-        String csvData = dataConverter.convert(command.getFile());
-        Chart chart = new Chart();
-        chart.setName(command.getName()); chart.setGoal(command.getGoal()); chart.setChartType(command.getChartType());
-        chart.setChartData(csvData); chart.setUserId(command.getUserId()); chart.setStatus(WAITING);
-        if (!chartService.save(chart)) throw new IllegalStateException("分析任务创建失败");
+        Chart chart = createWaitingTask(command);
         chart.setStatus(RUNNING); chartService.updateById(chart);
         try {
             AiChatRequest request = new AiChatRequest();
             request.setSystemPrompt(promptBuilder.buildSystemPrompt());
-            request.setUserMessage(promptBuilder.buildUserMessage(command.getGoal(), command.getChartType(), csvData));
+            request.setUserMessage(promptBuilder.buildUserMessage(chart.getGoal(), chart.getChartType(), chart.getChartData()));
             request.setTraceId(String.valueOf(chart.getId()));
             AiChatResponse response = aiChatClient.chat(request);
             AnalysisResult result = resultParser.parse(response.getContent());
             chart.setGenChart(result.getGenChart()); chart.setGenResult(result.getGenResult()); chart.setStatus(SUCCEEDED); chart.setExecMessage(null);
             if (!chartService.updateById(chart)) throw new IllegalStateException("分析结果保存失败");
+            return new AnalysisTaskResult(chart.getId(), result.getGenChart(), result.getGenResult());
+        } catch (RuntimeException e) {
+            chart.setStatus(FAILED); chart.setExecMessage(sanitize(e.getMessage())); chartService.updateById(chart);
+            throw e;
+        }
+    }
+
+    /**
+     * 只创建待执行任务，不调用模型；异步线程池和 MQ 入口使用该方法后再执行任务。
+     */
+    @Transactional
+    public Chart createWaitingTask(AnalysisTaskCommand command) {
+        validate(command);
+        String csvData = dataConverter.convert(command.getFile());
+        Chart chart = new Chart();
+        chart.setName(command.getName());
+        chart.setGoal(command.getGoal());
+        chart.setChartType(command.getChartType());
+        chart.setChartData(csvData);
+        chart.setUserId(command.getUserId());
+        chart.setStatus(WAITING);
+        if (!chartService.save(chart)) {
+            throw new IllegalStateException("分析任务创建失败");
+        }
+        return chart;
+    }
+
+    /** 重试已有失败任务；复用已保存的数据文本，避免重新上传文件。 */
+    @Transactional
+    public AnalysisTaskResult retryFailedTask(Chart chart, Long userId) {
+        if (chart == null || !userId.equals(chart.getUserId())) throw new IllegalArgumentException("无权操作该任务");
+        if (!FAILED.equals(chart.getStatus())) throw new IllegalStateException("只有失败任务可以重试");
+        chart.setStatus(WAITING); chart.setExecMessage(null);
+        chartService.updateById(chart);
+        chart.setStatus(RUNNING); chartService.updateById(chart);
+        try {
+            AiChatRequest request = new AiChatRequest();
+            request.setSystemPrompt(promptBuilder.buildSystemPrompt());
+            request.setUserMessage(promptBuilder.buildUserMessage(chart.getGoal(), chart.getChartType(), chart.getChartData()));
+            request.setTraceId(String.valueOf(chart.getId()));
+            AiChatResponse response = aiChatClient.chat(request);
+            AnalysisResult result = resultParser.parse(response.getContent());
+            chart.setGenChart(result.getGenChart()); chart.setGenResult(result.getGenResult()); chart.setStatus(SUCCEEDED); chart.setExecMessage(null);
+            chartService.updateById(chart);
+            return new AnalysisTaskResult(chart.getId(), result.getGenChart(), result.getGenResult());
+        } catch (RuntimeException e) {
+            chart.setStatus(FAILED); chart.setExecMessage(sanitize(e.getMessage())); chartService.updateById(chart);
+            throw e;
+        }
+    }
+
+    /** MQ 消费者执行已持久化任务，统一复用 Prompt、AI 调用和结果解析。 */
+    @Transactional
+    public AnalysisTaskResult executeExistingTask(Chart chart) {
+        if (chart == null || chart.getId() == null) throw new IllegalArgumentException("分析任务不存在");
+        if (SUCCEEDED.equals(chart.getStatus()) || RUNNING.equals(chart.getStatus())) {
+            return new AnalysisTaskResult(chart.getId(), chart.getGenChart(), chart.getGenResult());
+        }
+        if (!WAITING.equals(chart.getStatus()) && !FAILED.equals(chart.getStatus())) {
+            throw new IllegalStateException("当前任务状态不可执行");
+        }
+        chart.setStatus(RUNNING); chartService.updateById(chart);
+        try {
+            AiChatRequest request = new AiChatRequest();
+            request.setSystemPrompt(promptBuilder.buildSystemPrompt());
+            request.setUserMessage(promptBuilder.buildUserMessage(chart.getGoal(), chart.getChartType(), chart.getChartData()));
+            request.setTraceId(String.valueOf(chart.getId()));
+            AiChatResponse response = aiChatClient.chat(request);
+            AnalysisResult result = resultParser.parse(response.getContent());
+            chart.setGenChart(result.getGenChart()); chart.setGenResult(result.getGenResult()); chart.setStatus(SUCCEEDED); chart.setExecMessage(null);
+            chartService.updateById(chart);
             return new AnalysisTaskResult(chart.getId(), result.getGenChart(), result.getGenResult());
         } catch (RuntimeException e) {
             chart.setStatus(FAILED); chart.setExecMessage(sanitize(e.getMessage())); chartService.updateById(chart);

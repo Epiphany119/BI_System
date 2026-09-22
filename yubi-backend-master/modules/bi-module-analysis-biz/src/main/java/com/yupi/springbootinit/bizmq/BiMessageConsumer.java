@@ -2,11 +2,9 @@ package com.yupi.springbootinit.bizmq;
 
 import com.rabbitmq.client.Channel;
 import com.yupi.springbootinit.common.ErrorCode;
-import com.yupi.springbootinit.constant.CommonConstant;
 import com.yupi.springbootinit.exception.BusinessException;
-import com.yupi.springbootinit.manager.AiManager;
-import com.yupi.springbootinit.manager.AiResponseParser;
 import com.yupi.springbootinit.model.entity.Chart;
+import com.yupi.springbootinit.modules.analysis.application.AnalysisTaskApplicationService;
 import com.yupi.springbootinit.service.ChartService;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +24,7 @@ public class BiMessageConsumer {
     private ChartService chartService;
 
     @Resource
-    private AiManager aiManager;
+    private AnalysisTaskApplicationService analysisTaskApplicationService;
 
     // 指定程序监听的消息队列和确认机制
     @SneakyThrows
@@ -44,70 +42,14 @@ public class BiMessageConsumer {
             channel.basicNack(deliveryTag, false, false);
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "图表为空");
         }
-        // 先修改图表任务状态为 “执行中”。等执行成功后，修改为 “已完成”、保存执行结果；执行失败后，状态修改为 “失败”，记录任务失败信息。
-        Chart updateChart = new Chart();
-        updateChart.setId(chart.getId());
-        updateChart.setStatus("running");
-        boolean b = chartService.updateById(updateChart);
-        if (!b) {
-            channel.basicNack(deliveryTag, false, false);
-            handleChartUpdateError(chart.getId(), "更新图表执行中状态失败");
-            return;
-        }
-        // 调用 AI
-        AiResponseParser.ParsedResult parsedResult;
         try {
-            String result = aiManager.doChat(CommonConstant.BI_MODEL_ID, buildUserInput(chart));
-            parsedResult = AiResponseParser.parse(result);
-        } catch (BusinessException e) {
+            // 消费者只负责取任务和确认消息，业务流程统一交给应用服务。
+            analysisTaskApplicationService.executeExistingTask(chart);
+            channel.basicAck(deliveryTag, false);
+        } catch (RuntimeException e) {
             channel.basicNack(deliveryTag, false, false);
-            handleChartUpdateError(chart.getId(), e.getMessage());
-            return;
-        } catch (IllegalArgumentException e) {
-            channel.basicNack(deliveryTag, false, false);
-            handleChartUpdateError(chart.getId(), "AI 返回格式无法解析，请稍后重试");
-            return;
+            log.error("分析任务执行失败，chartId={}", chart.getId(), e);
         }
-        String genChart = parsedResult.getGenChart();
-        String genResult = parsedResult.getGenResult();
-        Chart updateChartResult = new Chart();
-        updateChartResult.setId(chart.getId());
-        updateChartResult.setGenChart(genChart);
-        updateChartResult.setGenResult(genResult);
-        // todo 建议定义状态为枚举值
-        updateChartResult.setStatus("succeed");
-        boolean updateResult = chartService.updateById(updateChartResult);
-        if (!updateResult) {
-            channel.basicNack(deliveryTag, false, false);
-            handleChartUpdateError(chart.getId(), "更新图表成功状态失败");
-        }
-        // 消息确认
-        channel.basicAck(deliveryTag, false);
-    }
-
-    /**
-     * 构建用户输入
-     * @param chart
-     * @return
-     */
-    private String buildUserInput(Chart chart) {
-        String goal = chart.getGoal();
-        String chartType = chart.getChartType();
-        String csvData = chart.getChartData();
-
-        // 构造用户输入
-        StringBuilder userInput = new StringBuilder();
-        userInput.append("分析需求：").append("\n");
-
-        // 拼接分析目标
-        String userGoal = goal;
-        if (StringUtils.isNotBlank(chartType)) {
-            userGoal += "，请使用" + chartType;
-        }
-        userInput.append(userGoal).append("\n");
-        userInput.append("原始数据：").append("\n");
-        userInput.append(csvData).append("\n");
-        return userInput.toString();
     }
 
     private void handleChartUpdateError(long chartId, String execMessage) {
