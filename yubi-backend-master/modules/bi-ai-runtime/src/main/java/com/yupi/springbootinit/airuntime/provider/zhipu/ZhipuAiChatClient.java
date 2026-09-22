@@ -44,6 +44,7 @@ public class ZhipuAiChatClient implements AiChatClient {
     }
 
     @Override
+    /** 执行一次同步、非流式智谱对话，并将供应商响应转换为统一响应对象。 */
     public AiChatResponse chat(AiChatRequest request) {
         if (request == null || request.getUserMessage() == null || request.getUserMessage().isBlank()) {
             throw new AiRuntimeException(AiRuntimeErrorCode.AI_CONFIGURATION_ERROR, false, "userMessage 不能为空");
@@ -95,6 +96,7 @@ public class ZhipuAiChatClient implements AiChatClient {
         }
     }
 
+    /** 解析请求模型：未指定时使用默认模型，指定时必须通过白名单校验。 */
     private String resolveModel(AiChatRequest request) {
         String model = request.getModel() == null || request.getModel().isBlank() ? properties.getDefaultModel() : request.getModel();
         if (properties.getAllowedModels() == null || !properties.getAllowedModels().contains(model)) {
@@ -103,6 +105,7 @@ public class ZhipuAiChatClient implements AiChatClient {
         return model;
     }
 
+    /** 校验供应商、API Key 和 Base URL；local 环境在首次调用时执行。 */
     private void validateConfiguration(String traceId) {
         if (!"zhipu".equalsIgnoreCase(properties.getProvider())) {
             throw new AiRuntimeException(AiRuntimeErrorCode.AI_CONFIGURATION_ERROR, false, "不支持的 AI provider");
@@ -115,6 +118,7 @@ public class ZhipuAiChatClient implements AiChatClient {
         }
     }
 
+    /** 将 HTTP 状态码映射为 Runtime 统一错误码，并判断是否允许业务层重试。 */
     private AiRuntimeException mapHttpError(int status, String body, String requestId, String traceId) {
         AiRuntimeErrorCode code = status == 401 || status == 403 ? AiRuntimeErrorCode.AI_AUTHENTICATION_ERROR
                 : status == 429 ? AiRuntimeErrorCode.AI_RATE_LIMITED
@@ -124,6 +128,7 @@ public class ZhipuAiChatClient implements AiChatClient {
         return new AiRuntimeException(code, retryable, status, requestId, summarize(body), traceId, null);
     }
 
+    /** 只解析智谱外层协议，不解析模型 content 中的业务 JSON。 */
     private AiChatResponse parseResponse(String body, String requestId, String traceId) {
         try {
             JsonNode root = objectMapper.readTree(body);
