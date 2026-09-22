@@ -5,8 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.stereotype.Component;
 
 /** 将模型文本解析为分析业务结果；兼容 JSON、Markdown 和历史分隔符。 */
+@Component
 public class AnalysisResultParser {
     private static final Pattern JSON_OBJECT = Pattern.compile("\\{[\\s\\S]*\\}");
     private static final String DELIMITER = "【【【【【";

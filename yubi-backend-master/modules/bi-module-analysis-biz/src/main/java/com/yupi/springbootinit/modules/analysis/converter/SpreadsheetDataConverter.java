@@ -6,6 +6,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -16,6 +17,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /** 将 CSV/XLSX 转换为受限的标准 CSV；超限时拒绝，不静默截断。 */
+@Component
 public class SpreadsheetDataConverter {
     public static final int MAX_COLUMNS = 50;
     public static final int MAX_ROWS = 1000;
