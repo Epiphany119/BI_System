@@ -35,7 +35,7 @@ Java package + 模块测试
 | `bi-ai-runtime` | `PRD-V1.0-bi-ai-runtime.md` | 初稿 |
 | `bi-module-user-biz` | `PRD-V1.0-bi-module-user-biz.md` | 待编写 |
 | `bi-module-auth-biz` | `PRD-V1.0-bi-module-auth-biz.md` | 待编写 |
-| `bi-module-analysis-biz` | `PRD-V1.0-bi-module-analysis-biz.md` | 待编写 |
+| `bi-module-analysis-biz` | `PRD-V1.0-bi-module-analysis-biz.md` | 初稿 |
 | `bi-module-chart-biz` | `PRD-V1.0-bi-module-chart-biz.md` | 待编写 |
 | `bi-module-file-biz` | `PRD-V1.0-bi-module-file-biz.md` | 待编写 |
 | `bi-module-dashboard-biz` | `PRD-V1.0-bi-module-dashboard-biz.md` | 待编写 |
