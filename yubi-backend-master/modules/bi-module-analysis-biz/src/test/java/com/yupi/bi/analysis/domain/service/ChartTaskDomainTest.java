@@ -6,7 +6,9 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 旧任务领域模型的状态流转和执行路由测试。 */
 class ChartTaskDomainTest {
+    /** 验证初始任务可以进入同步运行或等待，并禁止成功任务重新运行。 */
     @Test
     void stateMachineSupportsInitialRoutingAndFallback() {
         assertTrue(ChartTaskStateMachine.canTransition(ChartTaskStatus.CREATED, ChartTaskStatus.RUNNING));
@@ -15,6 +17,7 @@ class ChartTaskDomainTest {
         assertFalse(ChartTaskStateMachine.canTransition(ChartTaskStatus.SUCCEEDED, ChartTaskStatus.RUNNING));
     }
 
+    /** 验证 2MB 同步边界、超过边界转异步以及 5MB 文件上限。 */
     @Test
     void routerUsesTwoMbBoundaryAndFiveMbLimit() {
         long mb = 1024 * 1024;
